@@ -1,0 +1,50 @@
+# ---------------------------------------------------------------- python / envs
+.venv/
+*.egg-info/
+build/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------- local environment
+.claude/
+.env.sh
+
+# ---------------------------------------------------------------- not part of the release
+# This repository ships the selector only. The manuscript, the study's dataset and generation
+# pipeline, the figure/analysis code and the superseded architectures all stay local.
+paper/
+scripts/
+configs/
+reports/
+figures/
+logs/
+docs/
+stash/
+src/cofoldrank/data/
+CLAUDE.md
+CLAUDE.md.bak_*
+data
+
+# ---------------------------------------------------------------- heavy artifacts
+# Model weights, MSAs, structures and tables live under /data/cb/varunullanat, never in git.
+*.ckpt
+*.pt
+*.a3m
+*.parquet
+*.cif
+*.pdb
+*.ent
+outputs/
+wandb/
+
+# Two deliberate exceptions, both small and both needed for the repo to be usable on clone:
+#   the trained selector (~0.8 MB), so `PoolSelector()` works with no download
+#   the demo pool (~1.3 MB of real predictions), so `examples/` runs immediately
+!src/cofoldrank/select/checkpoints/*.joblib
+!examples/demo_pool/**/*.cif
+!examples/demo_pool/**/*.pdb
