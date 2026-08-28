@@ -4,9 +4,14 @@ Pick the best predicted antibody--antigen structure out of a pool of predictions
 predictors, using pose geometry alone -- no confidence scores, no predictor identity, no reference
 structure.
 
-Ten structures drawn two at a time from five predictors reach **55.4%** medium-or-better Success@1
-(DockQ >= 0.49) on 103 post-2021 complexes, above every individual predictor sampled 100 times
-(26--52%). Method and evaluation are described in the manuscript.
+![Success@1 against the number of predicted structures per target](assets/figure1b.png)
+
+Ten structures drawn two at a time from five predictors (teal) reach **55.4%** medium-or-better
+Success@1 (DockQ >= 0.49) on 103 post-2021 complexes -- above every individual predictor ranked by its
+own confidence at 100 structures (faint lines, 26--52%). The dotted segment below ten structures is one
+pose per predictor, where the selector's source-balanced feature degenerates. Bands are marginal
+target-bootstrap 95% intervals; every arm is scored on the same targets, so their overlap does not by
+itself imply no difference. Method and evaluation are described in the manuscript.
 
 ## Install
 
