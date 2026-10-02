@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cofoldrank"
-version = "1.0.0"
+version = "1.1.0"
 description = "Predictor-agnostic structural selection for antibody-antigen co-folding"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
@@ -33,7 +33,7 @@ cofoldrank = "cofoldrank.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# The released selector checkpoint (~0.8 MB) ships with the package so `PoolSelector()` works
+# The released selector checkpoint (~1.1 MB) ships with the package so `PoolSelector()` works
 # with no configuration. Override with $COFOLDRANK_SELECTOR.
 [tool.setuptools.package-data]
 "cofoldrank.select" = ["checkpoints/*.joblib"]

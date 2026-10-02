@@ -38,9 +38,10 @@ cofoldrank select examples/demo_pool --workers 8
 ```
 
 `make_demo_pool.py` copies real predictions from the study into the layout above and prints each pose's
-DockQ, plus what each predictor's own confidence picks from all 100 of its samples. On the default
-target the selector picks a DockQ 0.790 pose out of 10 structures; the best any predictor's confidence
-manages is 0.739 out of 100.
+DockQ, plus what each predictor's own confidence picks from all 100 of its samples. The default target is
+a hard case: only the two OpenDDE poses are near-native (DockQ 0.790). The 1.0.0 selector picked one of
+them; the 1.1.0 selector ranks the two Protenix-v2 poses (DockQ 0.02) just above them, a miss. Single pools
+vary; see the main README for cohort-level results.
 
 Use `--target` for a different complex and `--per-source` to change the pool size.
 
