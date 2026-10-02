@@ -23,8 +23,12 @@ def build_parser() -> argparse.ArgumentParser:
                        description="Rank predicted antibody-antigen structures by cross-pose "
                                    "agreement. Expects one subdirectory per predictor.")
     p.add_argument("directory", help="directory containing one subdirectory per predictor")
-    p.add_argument("--checkpoint", default=None,
-                   help="selector checkpoint (default: bundled, or $COFOLDRANK_SELECTOR)")
+    which = p.add_mutually_exclusive_group()
+    which.add_argument("--model", default=None, choices=["both", "paired-only", "vhh-only"],
+                       help="bundled selector: 'both' (default; trained on paired antibodies and VHHs), "
+                            "'paired-only' or 'vhh-only'")
+    which.add_argument("--checkpoint", default=None,
+                       help="selector checkpoint file (default: $COFOLDRANK_SELECTOR, else the 'both' model)")
     p.add_argument("--antibody-chains", default="H,L",
                    help="comma-separated antibody chain IDs; all other chains are the antigen")
     p.add_argument("--workers", type=int, default=1, help="processes used to parse structures")
@@ -38,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _cmd_select(args) -> int:
     from cofoldrank.select import PoolSelector
 
-    selector = PoolSelector(checkpoint=args.checkpoint,
+    selector = PoolSelector(checkpoint=args.checkpoint, model=args.model,
                             antibody_chains=tuple(c for c in args.antibody_chains.split(",") if c),
                             workers=args.workers)
     result = selector.rank(args.directory, max_per_source=args.max_per_source)

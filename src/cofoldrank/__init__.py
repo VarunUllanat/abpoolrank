@@ -13,7 +13,7 @@ The selector reads coordinates only. It uses no confidence value, no predictor i
 structures, so a predictor released after it was trained can be added to the pool without retraining.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 def __getattr__(name):

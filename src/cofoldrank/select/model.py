@@ -27,9 +27,20 @@ from .features import FEATURES
 HPARAMS = {"max_iter": 250, "learning_rate": 0.07, "min_samples_leaf": 40}
 N_SEEDS = 3
 
-#: Where `load()` looks when given no explicit path, in order.
+#: Bundled selectors, by name. All three use the same features and hyperparameters and differ only in the
+#: training targets: "both" is fitted on paired antibodies and VHHs together, "paired-only" and "vhh-only" on
+#: one antibody type each. "both" is the default and the selector reported in the manuscript.
+CHECKPOINT_DIR = Path(__file__).resolve().parent / "checkpoints"
+MODELS = {
+    "both": CHECKPOINT_DIR / "agnostic_struct.joblib",
+    "paired-only": CHECKPOINT_DIR / "agnostic_struct_paired.joblib",
+    "vhh-only": CHECKPOINT_DIR / "agnostic_struct_vhh.joblib",
+}
+DEFAULT_MODEL = "both"
+
+#: Where `load()` looks when given neither a path nor a model name, in order.
 ENV_VAR = "COFOLDRANK_SELECTOR"
-DEFAULT_PATHS = (Path(__file__).resolve().parent / "checkpoints" / "agnostic_struct.joblib",)
+DEFAULT_PATHS = (MODELS[DEFAULT_MODEL],)
 
 
 @dataclass
@@ -58,10 +69,25 @@ class SelectorModel:
         return path
 
     @classmethod
-    def load(cls, path=None) -> "SelectorModel":
-        """Load a checkpoint. With no path, try $COFOLDRANK_SELECTOR then the default locations."""
+    def load(cls, path=None, model=None) -> "SelectorModel":
+        """Load a checkpoint.
+
+        path   an explicit checkpoint file
+        model  a bundled selector by name: "both" (default), "paired-only" or "vhh-only"
+
+        Give at most one. With neither, $COFOLDRANK_SELECTOR is tried before the default "both" selector; a
+        model named explicitly is always loaded as named, so the environment cannot silently replace it.
+        """
         import joblib
 
+        if path is not None and model is not None:
+            raise ValueError("pass either a checkpoint path or a model name, not both")
+        if model is not None:
+            if model not in MODELS:
+                raise ValueError(f"unknown model {model!r}; choose one of {sorted(MODELS)}")
+            path = MODELS[model]
+            if not path.exists():
+                raise FileNotFoundError(f"bundled checkpoint for model {model!r} is missing: {path}")
         if path is None:
             candidates = []
             if os.environ.get(ENV_VAR):

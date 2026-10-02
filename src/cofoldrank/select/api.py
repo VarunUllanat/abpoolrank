@@ -83,14 +83,21 @@ class RankedPool:
 class PoolSelector:
     """The predictor-agnostic structural selector.
 
-    checkpoint       path to a checkpoint; default resolves $COFOLDRANK_SELECTOR then bundled locations
+    checkpoint       path to a checkpoint (or a loaded SelectorModel); default resolves $COFOLDRANK_SELECTOR
+                     then the bundled "both" selector
     antibody_chains  chain IDs of the antibody; everything else is the antigen assembly
     workers          processes used to parse structures (parsing dominates runtime)
+    model            a bundled selector by name instead of `checkpoint`: "both" (default; trained on paired
+                     antibodies and VHHs), "paired-only" or "vhh-only"
     """
 
-    def __init__(self, checkpoint=None, antibody_chains=("H", "L"), workers=1):
-        self.model = (checkpoint if isinstance(checkpoint, SelectorModel)
-                      else SelectorModel.load(checkpoint))
+    def __init__(self, checkpoint=None, antibody_chains=("H", "L"), workers=1, model=None):
+        if isinstance(checkpoint, SelectorModel):
+            if model is not None:
+                raise ValueError("pass either a checkpoint or a model name, not both")
+            self.model = checkpoint
+        else:
+            self.model = SelectorModel.load(checkpoint, model=model)
         self.antibody_chains = tuple(antibody_chains)
         self.workers = workers
 
@@ -154,8 +161,8 @@ class PoolSelector:
 
 
 def rank_predictions(directory, checkpoint=None, antibody_chains=("H", "L"), workers=1,
-                     sources=None, max_per_source=None) -> RankedPool:
+                     sources=None, max_per_source=None, model=None) -> RankedPool:
     """One-call convenience wrapper around PoolSelector.rank."""
     return PoolSelector(checkpoint=checkpoint, antibody_chains=antibody_chains,
-                        workers=workers).rank(directory, sources=sources,
+                        workers=workers, model=model).rank(directory, sources=sources,
                                               max_per_source=max_per_source)

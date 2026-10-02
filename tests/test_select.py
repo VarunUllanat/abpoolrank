@@ -214,3 +214,51 @@ def test_too_few_poses_raises(tmp_path):
     (d / "a.pdb").write_text("")
     with pytest.raises(ValueError, match="at least 2 poses"):
         PoolSelector().rank_pool(discover(tmp_path / "pool"))
+
+
+# --------------------------------------------------------------------------- bundled model choice
+def test_bundled_models_load_and_differ():
+    """'both', 'paired-only' and 'vhh-only' all ship with the package and are distinct selectors."""
+    from cofoldrank.select.model import MODELS, SelectorModel
+
+    S, E, codes, g = _fixture_pool()
+    X = pool_features(S, E, codes, g)
+    scores = {}
+    for name in MODELS:
+        m = SelectorModel.load(model=name)
+        assert m.features == FEATURES
+        scores[name] = m.predict(X)
+        assert np.isfinite(scores[name]).all()
+    assert np.array_equal(scores["both"], SelectorModel.load().predict(X))   # default is "both"
+    assert not np.array_equal(scores["both"], scores["paired-only"])
+    assert not np.array_equal(scores["both"], scores["vhh-only"])
+    assert np.array_equal(PoolSelector(model="vhh-only").model.predict(X), scores["vhh-only"])
+
+
+def test_model_choice_rejects_bad_input(monkeypatch):
+    from cofoldrank.select.model import MODELS, SelectorModel
+
+    with pytest.raises(ValueError, match="unknown model"):
+        SelectorModel.load(model="nanobody")
+    with pytest.raises(ValueError, match="not both"):
+        SelectorModel.load(path=MODELS["both"], model="vhh-only")
+    # a named model is loaded as named even when the environment points elsewhere
+    monkeypatch.setenv("COFOLDRANK_SELECTOR", str(MODELS["paired-only"]))
+    S, E, codes, g = _fixture_pool()
+    X = pool_features(S, E, codes, g)
+    assert np.array_equal(SelectorModel.load(model="vhh-only").predict(X),
+                          SelectorModel.load(path=MODELS["vhh-only"]).predict(X))
+    assert np.array_equal(SelectorModel.load().predict(X),                 # unnamed: env still honoured
+                          SelectorModel.load(path=MODELS["paired-only"]).predict(X))
+
+
+def test_cli_model_option():
+    from cofoldrank.cli import build_parser
+
+    p = build_parser()
+    assert p.parse_args(["select", "d"]).model is None
+    assert p.parse_args(["select", "d", "--model", "vhh-only"]).model == "vhh-only"
+    with pytest.raises(SystemExit):
+        p.parse_args(["select", "d", "--model", "vhh-only", "--checkpoint", "x.joblib"])
+    with pytest.raises(SystemExit):
+        p.parse_args(["select", "d", "--model", "camelid"])
