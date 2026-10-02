@@ -56,23 +56,34 @@ def load_labels(path, split="train"):
             zip(L["target_id"], L["folder"], L["seed"], L["sample"], L["dockq"])}
 
 
-def build_pools(cache_dir, targets, labels, sources, poses_per_source, reps, seed0=SEED0):
-    """Feature matrices and rank targets for every (target, m, rep) training pool."""
+def build_pools(cache_dir, targets, labels, sources, poses_per_source, reps, seed0=SEED0, skipped=None):
+    """Feature matrices and rank targets for every (target, m, rep) training pool.
+
+    A target is skipped if its pair cache is missing, a source has no poses, or any pose of any source lacks
+    a finite DockQ label. Pass a dict as `skipped` to receive {target: reason}; `main` reports these, because
+    silently skipping whole targets once dropped 350 of 614 training complexes (344 of them only because
+    their Protenix-v2 poses had not been labelled).
+    """
+    skipped = {} if skipped is None else skipped
     cache_dir = Path(cache_dir)
     n_src = len(sources)
     Xs, ys = [], []
     for t in targets:
         f = cache_dir / f"{t}.npz"
         if not f.exists():
+            skipped[t] = "no pair cache"
             continue
         z = np.load(f)
         ids = [str(x) for x in z["cand_ids"]]
         folders = np.array([i.split("|")[1] for i in ids])
         idx_by_src = {g: np.where(folders == g)[0] for g in sources}
         if any(len(idx_by_src[g]) == 0 for g in sources):
+            skipped[t] = "no poses from " + ",".join(g for g in sources if len(idx_by_src[g]) == 0)
             continue
         dq = np.array([labels.get(i, np.nan) for i in ids], float)
-        if any(not np.isfinite(dq[idx_by_src[g]]).all() for g in sources):
+        unlabelled = [g for g in sources if not np.isfinite(dq[idx_by_src[g]]).all()]
+        if unlabelled:
+            skipped[t] = "missing DockQ labels for " + ",".join(unlabelled)
             continue
         S = z["geom_sim"].astype(np.float32)
         E = z["epi_jac"].astype(np.float32)
@@ -118,15 +129,24 @@ def main():
     targets = sorted({k.split("|")[0] for k in labels} - holdout)
     print(f"{len(targets)} training targets ({len(holdout)} held-out targets excluded)", flush=True)
 
-    Xs, ys = build_pools(a.cache, targets, labels, sources, POSES_PER_SOURCE, a.reps)
+    skipped: dict = {}
+    Xs, ys = build_pools(a.cache, targets, labels, sources, POSES_PER_SOURCE, a.reps, skipped=skipped)
     if not Xs:
         raise SystemExit(f"no training pools built from {a.cache}")
+    n_used = len(targets) - len(skipped)
+    print(f"{n_used} of {len(targets)} training targets used; {len(skipped)} skipped", flush=True)
+    if skipped:
+        from collections import Counter
+
+        for reason, n in Counter(skipped.values()).most_common():
+            print(f"  WARNING skipped {n} targets: {reason}", flush=True)
     X, y = np.vstack(Xs), np.concatenate(ys)
     print(f"{len(Xs)} pools, {X.shape[0]} poses", flush=True)
 
     model = fit(X, y, n_seeds=a.n_seeds,
                 metadata={"sources_trained_on": list(sources),
-                          "n_train_targets": len(targets), "n_train_pools": len(Xs),
+                          "n_train_targets": n_used, "n_candidate_train_targets": len(targets),
+                          "n_train_pools": len(Xs),
                           "poses_per_source": list(POSES_PER_SOURCE), "pool_draws_per_setting": a.reps,
                           "pair_cache": str(a.cache), "seed0": SEED0})
     path = model.save(a.out)
