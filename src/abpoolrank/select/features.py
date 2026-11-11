@@ -1,37 +1,26 @@
-"""Pool features for the predictor-agnostic selector.
+"""Pool features for the selector.
 
-Four features, all derived from the pose-similarity matrices and the source partition:
+Four features per pose, computed from the pose-similarity matrices and the source partition:
 
-  pss_pct     within-pool percentile of pose-similarity support (mean similarity to every other pose)
-  srcbal_pct  within-pool percentile of SOURCE-BALANCED support: for each OTHER source, the top-k mean
-              similarity to that source's poses, then averaged over sources. This is the only feature
-              that uses source membership, and it uses it anonymously -- which partition a pose belongs
-              to, never which predictor that partition is.
-  epi_pct     the same support statistic computed on epitope-overlap instead of geometry
-  log_pool    log of the pool size, so one model covers pools of different sizes
+  pss_pct     within-pool percentile of mean geometric similarity to every other pose
+  srcbal_pct  within-pool percentile of source-balanced support: for each other source, the mean of the
+              top-k similarities to that source's poses, averaged over sources
+  epi_pct     within-pool percentile of the same statistic computed on epitope overlap
+  log_pool    log of the pool size
 
-Everything enters as a WITHIN-POOL PERCENTILE. Absolute consensus similarity does not transfer: poses for
-complexes inside a predictor's training window agree with each other far more than poses for complexes
-outside it (median geom_sim 0.134 against 0.036), so a model fitted on absolute similarity would read
-"inside the training window" rather than "correct". Percentiles are invariant to that shift, which is what
-makes the selector portable across predictors and cohorts.
-
-srcbal reduces EXACTLY to pss when every source contributes one pose: the top-k mean with k=1 is the
-single similarity, and the 1/(G-1) normaliser is constant within a pool so it cancels from the percentile.
-That is why the selector needs at least two poses per predictor -- below that, two of its four features
-are one column and within-source reproducibility is unobservable.
+With one pose per source, srcbal_pct equals pss_pct; the selector needs at least two poses per source.
 """
 from __future__ import annotations
 
 import numpy as np
 
-#: Feature columns of the released predictor-agnostic selector, in order.
+#: Feature columns, in order.
 FEATURES = ("pss_pct", "srcbal_pct", "epi_pct", "log_pool")
 
 #: Number of best matches averaged per other source in the source-balanced statistic.
 TOPK = 3
 
-#: Poses per source below which srcbal degenerates to pss (see module docstring).
+#: Poses per source below which srcbal_pct equals pss_pct.
 MIN_POSES_PER_SOURCE = 2
 
 

@@ -2,15 +2,11 @@
 
     from abpoolrank import PoolSelector
 
-    selector = PoolSelector()                       # loads the released checkpoint
+    selector = PoolSelector()                       # loads the bundled "both" model
     result = selector.rank("predictions/")          # predictions/<predictor>/<poses>
 
     print(result.best.path)                         # the pose to use
     print(result.table)                             # full ranking
-
-The selector reads only coordinates. It needs no confidence score, no predictor identity and no labelled
-structures, so it ranks a pool containing a model it has never seen -- including one that reports no
-confidence at all.
 """
 from __future__ import annotations
 
@@ -81,7 +77,7 @@ class RankedPool:
 
 
 class PoolSelector:
-    """The predictor-agnostic structural selector.
+    """Ranks pools of predicted structures with a trained selector model.
 
     checkpoint       path to a checkpoint (or a loaded SelectorModel); default resolves $ABPOOLRANK_SELECTOR
                      then the bundled "both" selector

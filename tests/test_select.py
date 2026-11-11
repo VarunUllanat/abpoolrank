@@ -1,10 +1,7 @@
-"""Regression tests for the released selector.
+"""Tests for the selector.
 
-The equivalence tests are the important ones: they pin the refactored package to the implementation that
-produced the published numbers, so a future change to descriptors, pair channels or features cannot
-silently move the results.
-
-Tests needing the study's cached artifacts skip when those are absent.
+The equivalence tests check that features and scores still match the values behind the published
+results. Tests that need the study's cached data, or a test pool, skip when those are absent.
 """
 from __future__ import annotations
 
@@ -52,8 +49,7 @@ def test_srcbal_differs_from_pss_at_two_poses_per_source():
 
 
 def test_features_are_invariant_to_source_count_scaling():
-    """1/(G-1) is constant within a pool, so it cannot survive the percentile. This is why a selector
-    fitted on five sources transfers to a pool with six."""
+    """The 1/(G-1) normaliser is constant within a pool, so it cancels from the percentile."""
     rng = np.random.default_rng(2)
     for g in (4, 5, 6):
         n = 2 * g
@@ -74,9 +70,8 @@ def test_pool_features_shape_and_column_order():
 
 
 # ------------------------------------------------------------- equivalence with the paper code
-# Frozen output of the implementation that produced the published results, for the fixed synthetic pool
-# built below (numpy default_rng(0), 25 poses, 5 sources of 5). Values are exact multiples of 1/24, so
-# equality is safe. If a change to features.py moves these, it has changed the published method.
+# Reference features for the synthetic pool built below (numpy default_rng(0), 25 poses, 5 sources of 5).
+# Values are exact multiples of 1/24, so they are compared for equality.
 REFERENCE_FEATURES = (
     (0.2916666666666667, 0.4583333333333333, 0.125),
     (0.75, 0.625, 0.4583333333333333),

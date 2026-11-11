@@ -1,15 +1,8 @@
 """Per-pose interface descriptor.
 
-One pass over a predicted complex produces everything the pairwise channels need: the epitope and
-paratope residue sets, the antibody-antigen contact pairs, a soft (distance-weighted) epitope profile,
-and CA coordinates split into antibody and antigen. Pair channels are then pure set/geometry operations
-on two descriptors, so a pool of N poses costs N parses and N*(N-1)/2 cheap comparisons.
-
-Extracted verbatim from the analysis code that produced the published pair-feature cache
-(scripts/paper/method/xgen_pairfeats.py); the constants and conventions below are frozen because the
-released selector was fitted against features computed exactly this way.
-
-No native/reference structure is ever read here -- descriptors are computed from predictions alone.
+`describe` parses one predicted complex into the epitope, paratope and contact-pair residue sets, a
+distance-weighted epitope profile, and antibody and antigen CA coordinates. `pairwise` compares these
+descriptors.
 """
 from __future__ import annotations
 
@@ -17,14 +10,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# Frozen geometry conventions. CUT is the heavy-atom contact cutoff in angstroms; SOFT_D0/SOFT_W are the
-# midpoint and width of the logistic used for the soft epitope profile.
+# CUT is the heavy-atom contact cutoff in angstroms; SOFT_D0/SOFT_W are the midpoint and width of the
+# logistic used for the soft epitope profile. The bundled models were trained with these values.
 CUT, SOFT_D0, SOFT_W = 5.0, 5.0, 1.0
 
 #: Chain IDs treated as the antibody. Everything else in the file is the antigen assembly.
 DEFAULT_ANTIBODY_CHAINS = ("H", "L")
 
-# A descriptor needs enough of both partners to define an interface and to superpose on later.
+# Minimum CA atoms per partner for a usable descriptor.
 MIN_AB_CA, MIN_AG_CA = 10, 5
 
 
@@ -41,11 +34,9 @@ class Descriptor:
 
 
 def load_structure(path):
-    """Read one model from a .pdb or .cif/.mmcif file into a biotite AtomArray.
+    """Read the first model of a .pdb/.ent or .cif/.mmcif file into a biotite AtomArray.
 
-    biotite warns once per file when an mmCIF omits `auth_atom_id` and it falls back to `label_atom_id`.
-    Predictor output routinely omits it, so on a 100-pose pool that warning is pure noise; the fallback
-    is the correct behaviour and the atom names it yields are the ones used throughout.
+    biotite's per-file UserWarnings (e.g. the missing `auth_atom_id` fallback) are suppressed.
     """
     import warnings
 
@@ -64,10 +55,8 @@ def load_structure(path):
 def describe(path, antibody_chains=DEFAULT_ANTIBODY_CHAINS) -> Descriptor | None:
     """Build the interface descriptor for one pose, or None if it is unusable.
 
-    Returns None -- rather than raising -- when the file cannot be parsed, when either partner is
-    absent, or when too few CA atoms are present to superpose. Callers treat a None descriptor as a
-    pose that contributes no similarity, which is how unparseable poses were handled when the released
-    features were built.
+    Returns None when the file cannot be parsed, when either partner is absent, or when too few CA
+    atoms are present. A None descriptor has zero similarity to every other pose.
     """
     from scipy.spatial import cKDTree
 

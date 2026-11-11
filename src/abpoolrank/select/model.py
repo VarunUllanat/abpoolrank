@@ -1,17 +1,8 @@
-"""The selector model: a small seed-averaged gradient-boosted ranker, plus persistence.
+"""The selector model: a seed-averaged gradient-boosted regressor over the pool features, plus loading
+and saving of checkpoints.
 
-The model maps the four pool features to a within-pool score; only the ORDER of scores matters, and the
-selected pose is the argmax. Two choices are load-bearing and are baked into the checkpoint rather than
-left to the caller:
-
-* **Within-pool rank target.** Fitting absolute DockQ is misspecified: training pools average 0.467 DockQ
-  against 0.283 on held-out complexes, because training complexes sit inside the predictors' training
-  windows. A pointwise fit to that level distorts the within-pool ordering that is actually being asked
-  for -- measured Spearman(prediction, pss_pct) was +0.83, i.e. the model re-ranked away from its own
-  strongest input and scored BELOW it. The target is therefore the within-pool percentile of DockQ.
-* **Seed averaging.** HistGradientBoosting's threaded histogram build is not bit-exact, and a single seed
-  moved the headline number by ~1 pp -- the same size as the effects being compared. Averaging over three
-  seeds makes the released selector a fixed, reportable object.
+The model is trained to predict each pose's within-pool percentile of DockQ; the highest-scoring pose is
+the selection.
 """
 from __future__ import annotations
 
@@ -23,13 +14,12 @@ import numpy as np
 
 from .features import FEATURES
 
-#: Hyperparameters of the released selector. Frozen; changing these invalidates the checkpoint.
+#: Hyperparameters of the bundled selectors.
 HPARAMS = {"max_iter": 250, "learning_rate": 0.07, "min_samples_leaf": 40}
 N_SEEDS = 3
 
-#: Bundled selectors, by name. All three use the same features and hyperparameters and differ only in the
-#: training targets: "both" is fitted on paired antibodies and VHHs together, "paired-only" and "vhh-only" on
-#: one antibody type each. "both" is the default and the selector reported in the manuscript.
+#: Bundled selectors, by name: "both" (default) is trained on paired antibodies and VHHs, "paired-only" and
+#: "vhh-only" on one antibody type each.
 CHECKPOINT_DIR = Path(__file__).resolve().parent / "checkpoints"
 MODELS = {
     "both": CHECKPOINT_DIR / "agnostic_struct.joblib",

@@ -1,14 +1,8 @@
 """All-pairs similarity channels between predicted poses.
 
-Two poses are compared by superposing their ANTIBODY frameworks on shared residues and then asking how
-far the antigen moved. That makes every channel invariant to global placement and sensitive only to the
-relative docking geometry, which is the quantity that actually distinguishes epitope modes.
-
-Only `geom_sim` and `epi_jac` feed the released selector; the other five channels are computed because
-they are cheap given the descriptors and are used by the feature ablation reported in the paper. A
-seven-channel selector was measured to be statistically indistinguishable from the four-feature one.
-
-No native structure is involved: these are prediction-to-prediction comparisons, never DockQ.
+Each pair of poses is superposed on shared antibody CA atoms, then compared on antigen placement
+(`geom_sim`, `com_dist`, `rel_rot`) and on interface residue overlap (the Jaccard channels). The selector
+uses `geom_sim` and `epi_jac`.
 """
 from __future__ import annotations
 
@@ -16,10 +10,10 @@ import numpy as np
 
 from .descriptors import Descriptor, describe
 
-#: Channel names, in the order they were frozen when the published cache was built.
+#: All channel names.
 CHANNELS = ("epi_jac", "cpair_jac", "geom_sim", "para_jac", "com_dist", "rel_rot", "soft_epi")
 
-# Superposition needs enough shared residues to be meaningful.
+# Minimum shared CA atoms for a superposition.
 MIN_SHARED_AB, MIN_SHARED_AG = 10, 5
 
 
@@ -86,13 +80,9 @@ def pair_matrices(descriptors, channels=CHANNELS) -> dict:
 
 
 def matrices_from_paths(paths, antibody_chains=("H", "L"), workers=1, channels=CHANNELS):
-    """Descriptors then all-pairs matrices, optionally parsing structures in parallel.
+    """Parse each structure into a descriptor (in parallel if workers > 1), then build the matrices.
 
-    Parsing dominates runtime, so it is the part worth parallelising. joblib's loky backend is used
-    rather than a raw ProcessPoolExecutor because the latter's spawn context re-imports __main__ in each
-    worker, which fails outright when the caller is a notebook, a REPL, or a `python -` script.
-
-    Returns (matrices, descriptors) so the caller can report which poses failed to parse.
+    Returns (matrices, descriptors); a None descriptor marks a pose that failed to parse.
     """
     paths = [str(p) for p in paths]
     ab = tuple(antibody_chains)

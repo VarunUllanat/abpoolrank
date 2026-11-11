@@ -1,8 +1,4 @@
-"""Predictor-agnostic structural selection over pools of predicted antibody-antigen complexes.
-
-Given several predicted structures per target -- ideally from several different co-folding predictors --
-this picks the one most likely to be correct, using pose geometry alone: no native structure, no
-confidence score, and no knowledge of which predictor produced which pose.
+"""Rank pools of predicted antibody-antigen structures.
 
     from abpoolrank import PoolSelector
     result = PoolSelector().rank("predictions/")

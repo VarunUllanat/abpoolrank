@@ -1,20 +1,11 @@
-"""Fit and export the predictor-agnostic selector checkpoint.
+"""Train and save a selector checkpoint.
 
     python -m abpoolrank.select.train --out /path/to/agnostic_struct.joblib
 
-This reproduces the fit reported in the paper: pools drawn from cached prediction-to-prediction
-similarity matrices, features as in `features.pool_features`, target = the within-pool percentile of
-DockQ, three seeds averaged. It needs two inputs, both of which are study artifacts and not shipped
-with the package: a directory of per-target `.npz` pair matrices (`cand_ids`, `geom_sim`, `epi_jac`)
-and a labels parquet. The default paths point at the study filesystem; pass --cache and --labels to
-train on your own.
-
-Training consumes DockQ labels; INFERENCE never does. Nothing here is needed to rank a new pool -- that
-only requires the exported checkpoint.
-
-Pool draws are seeded with a BLAKE2b digest of the draw identifiers rather than Python's built-in `hash`,
-which is salted per process when PYTHONHASHSEED is unset. Under the old seeding, repeated runs of an
-identical command drew different pose subsets and absolute Success@1 moved by up to ~2 pp between runs.
+Draws training pools from per-target pair-matrix files (`.npz` with `cand_ids`, `geom_sim`, `epi_jac`),
+computes pool features, and fits the model to the within-pool percentile of DockQ from a labels parquet.
+The default paths point at the study's data; pass --cache and --labels to train on your own. Ranking a
+new pool needs only the checkpoint, never DockQ labels.
 """
 from __future__ import annotations
 
@@ -27,19 +18,20 @@ import numpy as np
 from .features import percentile, pool_features
 from .model import DEFAULT_PATHS, fit
 
-# Locations of the frozen development artifacts. These are inputs to TRAINING only.
+# Default training inputs (study data).
 DATA = Path("/data/cb/varunullanat/cofoldrank_data")
 OUT = Path("/data/cb/varunullanat/cofoldrank_out")
 
 #: Sources of the released five-predictor training pools.
 TRAIN_SOURCES = ("boltz2", "promera", "protenix_v2", "esmfold2_fast", "opendde")
-#: Poses per source in the training pools, matching the published protocol.
+#: Poses per source in the training pools.
 POSES_PER_SOURCE = (1, 2, 4, 10, 20)
-#: Draw-seed offset for training pools, frozen so the fit is reproducible.
+#: Draw-seed offset for training pools.
 SEED0 = 7
 
 
 def stable_seed(*parts) -> int:
+    """Deterministic 32-bit seed from the draw identifiers (unaffected by PYTHONHASHSEED)."""
     h = hashlib.blake2b("|".join(map(repr, parts)).encode(), digest_size=4).digest()
     return int.from_bytes(h, "big")
 
@@ -60,9 +52,7 @@ def build_pools(cache_dir, targets, labels, sources, poses_per_source, reps, see
     """Feature matrices and rank targets for every (target, m, rep) training pool.
 
     A target is skipped if its pair cache is missing, a source has no poses, or any pose of any source lacks
-    a finite DockQ label. Pass a dict as `skipped` to receive {target: reason}; `main` reports these, because
-    silently skipping whole targets once dropped 350 of 614 training complexes (344 of them only because
-    their Protenix-v2 poses had not been labelled).
+    a finite DockQ label. Pass a dict as `skipped` to receive {target: reason}.
     """
     skipped = {} if skipped is None else skipped
     cache_dir = Path(cache_dir)

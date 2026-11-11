@@ -1,4 +1,4 @@
-"""Turning a directory of predicted structures into a pool.
+"""Turn a directory of predicted structures into a pool.
 
 Expected layout -- one subdirectory per predictor, named however the user likes:
 
@@ -7,12 +7,8 @@ Expected layout -- one subdirectory per predictor, named however the user likes:
       protenix/      sample_00.cif  ...
       my_new_model/  a.pdb  b.pdb  ...
 
-The subdirectory name is the SOURCE label. It is used only to partition the pool: the selector needs to
-know which poses share an origin, never which predictor that origin is. Renaming the directories cannot
-change the ranking, which is what makes a newly released predictor usable without retraining.
-
-A flat directory of structures is also accepted and treated as a single source, but note that the
-source-balanced feature is undefined with one source -- see `Pool.warnings`.
+Each subdirectory is one source. A flat directory of structures is treated as a single source, with a
+warning in `Pool.warnings`.
 """
 from __future__ import annotations
 
