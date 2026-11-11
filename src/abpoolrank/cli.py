@@ -1,6 +1,6 @@
 """Command-line interface.
 
-    cofoldrank select PREDICTIONS_DIR
+    abpoolrank select PREDICTIONS_DIR
 
 Ranks a pool of predicted antibody-antigen structures and reports the best pose. `PREDICTIONS_DIR`
 holds one subdirectory per predictor.
@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import argparse
 
-from cofoldrank import __version__
+from abpoolrank import __version__
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="cofoldrank",
+        prog="abpoolrank",
         description="Predictor-agnostic structural selection for antibody-antigen co-folding.")
-    parser.add_argument("--version", action="version", version=f"cofoldrank {__version__}")
+    parser.add_argument("--version", action="version", version=f"abpoolrank {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="{select}")
 
     p = sub.add_parser("select", help="rank predicted structures and report the best pose",
@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
                        help="bundled selector: 'both' (default; trained on paired antibodies and VHHs), "
                             "'paired-only' or 'vhh-only'")
     which.add_argument("--checkpoint", default=None,
-                       help="selector checkpoint file (default: $COFOLDRANK_SELECTOR, else the 'both' model)")
+                       help="selector checkpoint file (default: $ABPOOLRANK_SELECTOR, else the 'both' model)")
     p.add_argument("--antibody-chains", default="H,L",
                    help="comma-separated antibody chain IDs; all other chains are the antigen")
     p.add_argument("--workers", type=int, default=1, help="processes used to parse structures")
@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _cmd_select(args) -> int:
-    from cofoldrank.select import PoolSelector
+    from abpoolrank.select import PoolSelector
 
     selector = PoolSelector(checkpoint=args.checkpoint, model=args.model,
                             antibody_chains=tuple(c for c in args.antibody_chains.split(",") if c),

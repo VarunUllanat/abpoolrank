@@ -39,7 +39,7 @@ MODELS = {
 DEFAULT_MODEL = "both"
 
 #: Where `load()` looks when given neither a path nor a model name, in order.
-ENV_VAR = "COFOLDRANK_SELECTOR"
+ENV_VAR = "ABPOOLRANK_SELECTOR"
 DEFAULT_PATHS = (MODELS[DEFAULT_MODEL],)
 
 
@@ -75,7 +75,7 @@ class SelectorModel:
         path   an explicit checkpoint file
         model  a bundled selector by name: "both" (default), "paired-only" or "vhh-only"
 
-        Give at most one. With neither, $COFOLDRANK_SELECTOR is tried before the default "both" selector; a
+        Give at most one. With neither, $ABPOOLRANK_SELECTOR is tried before the default "both" selector; a
         model named explicitly is always loaded as named, so the environment cannot silently replace it.
         """
         import joblib
@@ -100,7 +100,7 @@ class SelectorModel:
             else:
                 raise FileNotFoundError(
                     "no selector checkpoint found. Train one with "
-                    "`python -m cofoldrank.select.train`, or set "
+                    "`python -m abpoolrank.select.train`, or set "
                     f"${ENV_VAR} to a checkpoint path. Looked in: "
                     + ", ".join(str(c) for c in candidates))
         blob = joblib.load(Path(path))

@@ -1,6 +1,6 @@
 """User-facing API: rank a pool of predicted antibody-antigen structures.
 
-    from cofoldrank import PoolSelector
+    from abpoolrank import PoolSelector
 
     selector = PoolSelector()                       # loads the released checkpoint
     result = selector.rank("predictions/")          # predictions/<predictor>/<poses>
@@ -83,7 +83,7 @@ class RankedPool:
 class PoolSelector:
     """The predictor-agnostic structural selector.
 
-    checkpoint       path to a checkpoint (or a loaded SelectorModel); default resolves $COFOLDRANK_SELECTOR
+    checkpoint       path to a checkpoint (or a loaded SelectorModel); default resolves $ABPOOLRANK_SELECTOR
                      then the bundled "both" selector
     antibody_chains  chain IDs of the antibody; everything else is the antigen assembly
     workers          processes used to parse structures (parsing dominates runtime)

@@ -1,16 +1,33 @@
-# cofoldrank
+# AbPoolRank
 
-Pick the best predicted antibody--antigen structure out of a pool of predictions from several co-folding
+Pick the best predicted antibody–antigen structure out of a pool of predictions from several co-folding
 predictors, using pose geometry alone (no confidence scores, no predictor identity, no reference
 structure).
+
+On 103 cluster-disjoint, post-2021 antibody–antigen complexes from SAbDab2, three structures each from five
+co-folding predictors (a 15-structure pool) ranked by AbPoolRank reach 58.0% medium-or-better Success@1
+(DockQ ≥ 0.49). Confidence-based selection from any single predictor sampled 100 times reaches 26–52%.
 
 ![Success@1 against the number of predicted structures per target](assets/figure1b.png)
 
 ## Install
 
+Requires Python 3.11 or 3.12.
+
 ```bash
-pip install -e .            
+pip install git+https://github.com/VarunUllanat/abpoolrank.git
 ```
+
+or, from a clone:
+
+```bash
+git clone https://github.com/VarunUllanat/abpoolrank.git
+cd abpoolrank
+pip install -e ".[dev]"
+```
+
+The trained selectors (~2.6 MB) ship with the package; nothing else needs to be downloaded. The co-folding
+predictors are not dependencies: run them however you like and point AbPoolRank at their output structures.
 
 ## Run
 
@@ -19,24 +36,28 @@ selector which poses share an origin.
 
 ```
 predictions/
-  boltz2/        pose_0.cif  pose_1.cif
-  protenix/      sample_00.cif  sample_01.cif
-  my_new_model/  a.pdb  b.pdb
+  boltz2/        pose_0.cif  pose_1.cif  pose_2.cif
+  protenix/      sample_00.cif  sample_01.cif  sample_02.cif
+  my_new_model/  a.pdb  b.pdb  c.pdb
 ```
 
 ```bash
-cofoldrank select predictions/ --workers 8 --csv ranking.csv
+abpoolrank select predictions/ --workers 8 --csv ranking.csv
 ```
 
 ```python
-from cofoldrank import PoolSelector
+from abpoolrank import PoolSelector
 
 result = PoolSelector(workers=8).rank("predictions/")
 print(result.best.path)
 ```
 
 Options: `--model` (see below), `--antibody-chains` (default `H,L`; all other chains are the antigen),
-`--max-per-source`, `--top`, `--csv`. Accepts `.cif`, `.mmcif`, `.pdb`, `.ent`.
+`--max-per-source`, `--top`, `--csv`, `--checkpoint`. Accepts `.cif`, `.mmcif`, `.pdb`, `.ent`.
+
+Use **at least two poses per predictor**; the manuscript's headline setting is three. With one, the
+source-balanced feature reduces to plain pose-similarity support and the selector warns. Predictors do not
+need to be ones the selector was trained on: it never sees predictor identities.
 
 ### Choosing a model
 
@@ -47,23 +68,20 @@ Options: `--model` (see below), `--antibody-chains` (default `H,L`; all other ch
 | `vhh-only` | VHHs / nanobodies only (197) | VHHs |
 
 ```bash
-cofoldrank select predictions/ --model vhh-only
+abpoolrank select predictions/ --model vhh-only
 ```
 
 ```python
 result = PoolSelector(model="paired-only").rank("predictions/")
 ```
 
-Use **at least two poses per predictor**. With one, the source-balanced feature reduces to plain
-pose-similarity support and the selector warns.
+To use your own checkpoint by default, set `$ABPOOLRANK_SELECTOR` to its path; a model named with `--model`
+always takes precedence.
 
-## Results
-
-
-Example output:
+## Output
 
 ```
-pool: 15 poses from 5 sources
+pool: 15 poses from 5 sources (boltz2=3, esmfold2_fast=3, opendde=3, promera=3, protenix_v2=3)
 
 best: predictions/protenix_v2/pose_1.pdb
       source=protenix_v2  score=0.6811
@@ -74,10 +92,33 @@ top 5:
     ...
 ```
 
-Use `result.best.path` -- that is the structure to take forward. 
+`result.best.path` is the structure to take forward. `result.table` (or `--csv`) gives the full ranking with
+the four features behind each score:
 
-`result.table` (or `--csv`) gives the full ranking with the four features behind it:
+| column | meaning |
+|---|---|
+| `rank`, `source`, `score`, `path` | position in the ranking, predictor subdirectory, selector score, structure file |
+| `pss_pct` | within-pool percentile of the pose's geometric support from all other poses |
+| `srcbal_pct` | within-pool percentile of support balanced across the other predictors |
+| `epi_pct` | within-pool percentile of epitope agreement with the other poses |
+| `log_pool` | log of the pool size |
 
-| rank | source | score | path | pss_pct | srcbal_pct | epi_pct | log_pool |
-|---|---|---|---|---|---|---|---|
+## Tests
 
+```bash
+pytest
+```
+
+Tests that need the study's cached artifacts skip when those are absent. The API tests run on any
+five-predictor, two-pose pool: `ABPOOLRANK_TEST_POOL=/path/to/pool pytest`.
+
+## Citation
+
+If you use AbPoolRank, please cite:
+
+> Ullanat V, Gupta A, Li R, Amengual-Rigo P, Furtmann N, Bryson B, Berger B. Breadth over Depth:
+> Predictor-Agnostic Consensus for Improved Antibody–Antigen Structure Prediction. *bioRxiv* (2026).
+
+## License
+
+MIT; see [LICENSE](LICENSE).

@@ -3,17 +3,27 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cofoldrank"
-version = "1.2.0"
+name = "abpoolrank"
+version = "1.3.0"
 description = "Predictor-agnostic structural selection for antibody-antigen co-folding"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 license = { text = "MIT" }
 authors = [{ name = "Varun Ullanat", email = "varun@divergencelabs.com" }]
+keywords = ["antibody", "antigen", "structure prediction", "co-folding", "protein docking", "ranking"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 
-# Core = what `cofoldrank select` needs: parse structures, compare poses, score the pool.
-# The co-folding predictors themselves are deliberately NOT dependencies -- they are external
-# subprocesses behind uniform adapters, each in its own environment.
+# Core = what `abpoolrank select` needs: parse structures, compare poses, score the pool.
+# The co-folding predictors themselves are NOT dependencies: run them however you like and point the
+# selector at their output structures.
 dependencies = [
     "numpy==1.26.4",            # <2.0: required by DockQ 2.1.3 and matches the generator ecosystem
     "scipy==1.14.1",            # cKDTree for contact detection
@@ -27,25 +37,21 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest==8.3.4", "pytest-cov==6.0.0", "ruff==0.8.4"]
 
+[project.urls]
+Homepage = "https://github.com/VarunUllanat/abpoolrank"
+Source = "https://github.com/VarunUllanat/abpoolrank"
+Issues = "https://github.com/VarunUllanat/abpoolrank/issues"
+
 [project.scripts]
-cofoldrank = "cofoldrank.cli:main"
+abpoolrank = "abpoolrank.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 # The released selector checkpoints (both / paired-only / vhh-only, ~2.6 MB) ship with the package so `PoolSelector()` works
-# with no configuration. Override with $COFOLDRANK_SELECTOR.
+# with no configuration. Override with $ABPOOLRANK_SELECTOR.
 [tool.setuptools.package-data]
-"cofoldrank.select" = ["checkpoints/*.joblib"]
-
-# --- torch cu128 wheels: pull torch from the PyTorch index, everything else from PyPI ---
-[tool.uv.sources]
-torch = { index = "pytorch-cu128" }
-
-[[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
+"abpoolrank.select" = ["checkpoints/*.joblib"]
 
 [tool.ruff]
 line-length = 100
@@ -54,7 +60,3 @@ target-version = "py311"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
-
-# ANARCI (CLAUDE.md 5.3) is NOT pip-installable cleanly (needs the HMMER binary).
-# Installed separately at Stage 3/M3 time (bioconda `anarci` or oxpig/ANARCI from source).
-# It is only needed for CDR-localized jitter (M3) and paratope ID, not for M0-M2.

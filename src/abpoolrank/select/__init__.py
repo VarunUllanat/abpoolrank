@@ -4,7 +4,7 @@ Given several predicted structures per target -- ideally from several different 
 this picks the one most likely to be correct, using pose geometry alone: no native structure, no
 confidence score, and no knowledge of which predictor produced which pose.
 
-    from cofoldrank import PoolSelector
+    from abpoolrank import PoolSelector
     result = PoolSelector().rank("predictions/")
     result.best.path
 """

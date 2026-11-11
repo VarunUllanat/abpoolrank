@@ -1,6 +1,6 @@
 """Fit and export the predictor-agnostic selector checkpoint.
 
-    python -m cofoldrank.select.train --out /path/to/agnostic_struct.joblib
+    python -m abpoolrank.select.train --out /path/to/agnostic_struct.joblib
 
 This reproduces the fit reported in the paper: pools drawn from cached prediction-to-prediction
 similarity matrices, features as in `features.pool_features`, target = the within-pool percentile of

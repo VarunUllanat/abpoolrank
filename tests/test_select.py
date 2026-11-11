@@ -8,17 +8,19 @@ Tests needing the study's cached artifacts skip when those are absent.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from cofoldrank.select import FEATURES, PoolSelector, discover, pool_features
-from cofoldrank.select.features import TOPK, percentile, support
+from abpoolrank.select import FEATURES, PoolSelector, discover, pool_features
+from abpoolrank.select.features import TOPK, percentile, support
 
 CACHE = Path("/data/cb/varunullanat/cofoldrank_data/features/xgen_pair")
 COHORT = Path("/data/cb/varunullanat/cofoldrank_out/results/fig2_cohort.parquet")
-DEMO = Path(__file__).resolve().parents[1] / "examples" / "demo_pool"
+# A 5-predictor x 2-pose pool laid out as <dir>/<predictor>/<poses>; none ships with the package.
+DEMO = Path(os.environ.get("ABPOOLRANK_TEST_POOL", "/nonexistent/abpoolrank_test_pool"))
 
 
 # --------------------------------------------------------------------------- unit
@@ -109,8 +111,12 @@ def _fixture_pool():
     rng = np.random.default_rng(0)
     n, g = 25, 5
     codes = np.repeat(np.arange(g), 5)
-    S = rng.random((n, n)); S = (S + S.T) / 2; np.fill_diagonal(S, 0.0)
-    E = rng.random((n, n)); E = (E + E.T) / 2; np.fill_diagonal(E, 0.0)
+    S = rng.random((n, n))
+    S = (S + S.T) / 2
+    np.fill_diagonal(S, 0.0)
+    E = rng.random((n, n))
+    E = (E + E.T) / 2
+    np.fill_diagonal(E, 0.0)
     return S, E, codes, g
 
 
@@ -141,7 +147,7 @@ def test_pair_channels_reproduce_published_cache():
     """Recomputing from the original structure files must match the frozen pair-feature cache."""
     import polars as pl
 
-    from cofoldrank.select.pairwise import matrices_from_paths
+    from abpoolrank.select.pairwise import matrices_from_paths
 
     target = "pdb_00009e6k_H_L"
     npz = CACHE / f"{target}.npz"
@@ -166,7 +172,7 @@ def test_pair_channels_reproduce_published_cache():
 
 
 # --------------------------------------------------------------------------- API
-@pytest.mark.skipif(not DEMO.exists(), reason="run examples/make_demo_pool.py first")
+@pytest.mark.skipif(not DEMO.exists(), reason="set $ABPOOLRANK_TEST_POOL to a 5x2 pool")
 def test_discover_partitions_by_subdirectory():
     pool = discover(DEMO)
     assert pool.n_sources == 5
@@ -175,7 +181,7 @@ def test_discover_partitions_by_subdirectory():
     assert not pool.warnings                              # 5 sources x 2 poses is the intended regime
 
 
-@pytest.mark.skipif(not DEMO.exists(), reason="run examples/make_demo_pool.py first")
+@pytest.mark.skipif(not DEMO.exists(), reason="set $ABPOOLRANK_TEST_POOL to a 5x2 pool")
 def test_ranking_is_complete_ordered_and_source_label_invariant(tmp_path):
     import shutil
 
@@ -196,7 +202,7 @@ def test_ranking_is_complete_ordered_and_source_label_invariant(tmp_path):
     assert np.allclose(sorted(other.scores), sorted(result.scores))
 
 
-@pytest.mark.skipif(not DEMO.exists(), reason="run examples/make_demo_pool.py first")
+@pytest.mark.skipif(not DEMO.exists(), reason="set $ABPOOLRANK_TEST_POOL to a 5x2 pool")
 def test_single_pose_per_source_warns_about_degeneracy():
     selector = PoolSelector()
     with pytest.warns(RuntimeWarning, match="one pose|fewer than 2"):
@@ -219,7 +225,7 @@ def test_too_few_poses_raises(tmp_path):
 # --------------------------------------------------------------------------- bundled model choice
 def test_bundled_models_load_and_differ():
     """'both', 'paired-only' and 'vhh-only' all ship with the package and are distinct selectors."""
-    from cofoldrank.select.model import MODELS, SelectorModel
+    from abpoolrank.select.model import MODELS, SelectorModel
 
     S, E, codes, g = _fixture_pool()
     X = pool_features(S, E, codes, g)
@@ -236,14 +242,14 @@ def test_bundled_models_load_and_differ():
 
 
 def test_model_choice_rejects_bad_input(monkeypatch):
-    from cofoldrank.select.model import MODELS, SelectorModel
+    from abpoolrank.select.model import MODELS, SelectorModel
 
     with pytest.raises(ValueError, match="unknown model"):
         SelectorModel.load(model="nanobody")
     with pytest.raises(ValueError, match="not both"):
         SelectorModel.load(path=MODELS["both"], model="vhh-only")
     # a named model is loaded as named even when the environment points elsewhere
-    monkeypatch.setenv("COFOLDRANK_SELECTOR", str(MODELS["paired-only"]))
+    monkeypatch.setenv("ABPOOLRANK_SELECTOR", str(MODELS["paired-only"]))
     S, E, codes, g = _fixture_pool()
     X = pool_features(S, E, codes, g)
     assert np.array_equal(SelectorModel.load(model="vhh-only").predict(X),
@@ -253,7 +259,7 @@ def test_model_choice_rejects_bad_input(monkeypatch):
 
 
 def test_cli_model_option():
-    from cofoldrank.cli import build_parser
+    from abpoolrank.cli import build_parser
 
     p = build_parser()
     assert p.parse_args(["select", "d"]).model is None

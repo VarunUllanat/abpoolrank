@@ -1,10 +1,10 @@
-"""cofoldrank -- predictor-agnostic structural selection for antibody-antigen co-folding.
+"""abpoolrank -- predictor-agnostic structural selection for antibody-antigen co-folding.
 
 Sampling a few structures from each of several co-folding predictors and picking one by cross-pose
 agreement outperforms sampling one predictor deeply and trusting its confidence score. This package
 implements the selection step:
 
-    from cofoldrank import PoolSelector
+    from abpoolrank import PoolSelector
 
     result = PoolSelector().rank("predictions/")   # predictions/<predictor>/<poses>
     print(result.best.path)
@@ -13,11 +13,11 @@ The selector reads coordinates only. It uses no confidence value, no predictor i
 structures, so a predictor released after it was trained can be added to the pool without retraining.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 
 def __getattr__(name):
-    # Imported lazily so `import cofoldrank` stays cheap and does not pull in sklearn/biotite for
+    # Imported lazily so `import abpoolrank` stays cheap and does not pull in sklearn/biotite for
     # callers that only want the dataset tooling.
     if name in ("PoolSelector", "RankedPool", "Candidate", "rank_predictions", "SelectorModel"):
         from . import select
